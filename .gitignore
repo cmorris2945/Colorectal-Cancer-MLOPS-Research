@@ -29,6 +29,7 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
+colorectal_cancer_research.egg-info/
 
 # PyInstaller
 *.manifest
