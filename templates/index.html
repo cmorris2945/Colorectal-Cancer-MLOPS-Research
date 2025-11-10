@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OncoForm — Clinical Input</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Inter (UI), Orbitron (futuristic headings) -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="static/styles.css" />
+</head>
+<body>
+  <div class="grid-bg" aria-hidden="true"></div>
+
+  <header class="site-header" role="banner">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <span class="pulse"></span>
+      </div>
+      <div class="brand-text">
+        <h1>OncoForm</h1>
+        <p>Clinical Data Intake • v1.1</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="container" role="main">
+    <section class="card">
+      <h2>Patient / Case Inputs</h2>
+      <p class="subtle">Decimals allowed for costs, tumor size, and mortality. Integers for treatment type and diabetes.</p>
+
+      <form id="onco-form" novalidate>
+        <!-- Healthcare_Costs (decimal) -->
+        <div class="field">
+          <label for="Healthcare_Costs">Healthcare_Costs</label>
+          <div class="input-wrap">
+            <span class="prefix" aria-hidden="true">$</span>
+            <input
+              id="Healthcare_Costs"
+              name="Healthcare_Costs"
+              type="number"
+              inputmode="decimal"
+              step="0.01"
+              min="0"
+              placeholder="e.g., 12450.75"
+              required
+              aria-describedby="hc-help"
+            />
+          </div>
+          <small id="hc-help" class="hint">Decimal allowed. Example: 12450.75</small>
+        </div>
+
+        <!-- Tumor_Size_mm (decimal) -->
+        <div class="field">
+          <label for="Tumor_Size_mm">Tumor_Size_mm</label>
+          <input
+            id="Tumor_Size_mm"
+            name="Tumor_Size_mm"
+            type="number"
+            inputmode="decimal"
+            step="0.01"
+            min="0"
+            placeholder="e.g., 27.4"
+            required
+            aria-describedby="ts-help"
+          />
+          <small id="ts-help" class="hint">Decimal allowed (millimeters). Example: 27.4</small>
+        </div>
+
+        <!-- Treatment_type (integer) -->
+        <div class="field">
+          <label for="Treatment_type">Treatment_type</label>
+          <input
+            id="Treatment_type"
+            name="Treatment_type"
+            type="number"
+            inputmode="numeric"
+            step="1"
+            placeholder="e.g., 2"
+            required
+            aria-describedby="tt-help"
+          />
+          <small id="tt-help" class="hint">Integer only (categorical code). Example: 0, 1, 2…</small>
+        </div>
+
+        <!-- Diabetes (integer) -->
+        <div class="field">
+          <label for="Diabetes">Diabetes</label>
+          <input
+            id="Diabetes"
+            name="Diabetes"
+            type="number"
+            inputmode="numeric"
+            step="1"
+            placeholder="e.g., 0 or 1"
+            required
+            aria-describedby="db-help"
+          />
+          <small id="db-help" class="hint">Integer only (e.g., 0 = no, 1 = yes).</small>
+        </div>
+
+        <!-- Mortalitiy_Rate_per_100k (decimal) -->
+        <div class="field">
+          <label for="Mortalitiy_Rate_per_100k" title="Field name kept as provided (note spelling).">
+            Mortalitiy_Rate_per_100k
+          </label>
+          <input
+            id="Mortalitiy_Rate_per_100k"
+            name="Mortalitiy_Rate_per_100k"
+            type="number"
+            inputmode="decimal"
+            step="0.01"
+            min="0"
+            placeholder="e.g., 18.6"
+            required
+            aria-describedby="mr-help"
+          />
+          <small id="mr-help" class="hint">Decimal allowed (per 100k). Example: 18.6</small>
+        </div>
+
+        <div class="actions">
+          <button id="predict-btn" type="button" class="btn primary">Predict</button>
+          <button type="reset" class="btn ghost">Reset</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Preview</h2>
+      <p class="subtle">Payload sent to the model (JSON).</p>
+      <pre id="preview" class="codeblock" tabindex="0">{}</pre>
+    </section>
+
+    <section class="card">
+      <h2>Prediction</h2>
+      <p class="subtle">Model output and confidence.</p>
+
+      <!-- Server-side prediction (Flask/Jinja) -->
+      {% if prediction is not none %}
+        <h3>Prediction : {{ prediction }}</h3>
+      {% endif %}
+
+      <!-- Client-side UI (works even if server doesn't set `prediction`) -->
+      <div id="pred-status" class="badge idle">Idle</div>
+
+      <div class="pred-grid">
+        <div>
+          <span class="k">label</span>
+          <span id="pred-label" class="v">—</span>
+        </div>
+        <div>
+          <span class="k">confidence</span>
+          <span id="pred-conf" class="v">—</span>
+        </div>
+      </div>
+
+      <pre id="pred-raw" class="codeblock" tabindex="0">{}</pre>
+    </section>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <p>© 2025 OncoForm • Biomedical UI Prototype</p>
+  </footer>
+
+  <script>
+    (function () {
+      const form = document.getElementById('onco-form');
+      const preview = document.getElementById('preview');
+      const predictBtn = document.getElementById('predict-btn');
+
+      const predStatus = document.getElementById('pred-status');
+      const predLabel = document.getElementById('pred-label');
+      const predConf = document.getElementById('pred-conf');
+      const predRaw = document.getElementById('pred-raw');
+
+      function getPayload() {
+        return {
+          Healthcare_Costs: parseFloat(form.Healthcare_Costs.value),
+          Tumor_Size_mm: parseFloat(form.Tumor_Size_mm.value),
+          Treatment_type: parseInt(form.Treatment_type.value, 10),
+          Diabetes: parseInt(form.Diabetes.value, 10),
+          Mortalitiy_Rate_per_100k: parseFloat(form.Mortalitiy_Rate_per_100k.value)
+        };
+      }
+
+      function setStatus(state) {
+        predStatus.className = 'badge ' + state;
+        predStatus.textContent =
+          state === 'loading' ? 'Predicting…' :
+          state === 'ok' ? 'Complete' :
+          state === 'error' ? 'Error' : 'Idle';
+      }
+
+      // Wire up Predict
+      predictBtn.addEventListener('click', async function () {
+        if (!form.checkValidity()) {
+          form.reportValidity();
+          return;
+        }
+
+        const payload = getPayload();
+        preview.textContent = JSON.stringify(payload, null, 2);
+
+        setStatus('loading');
+        predLabel.textContent = '—';
+        predConf.textContent = '—';
+        predRaw.textContent = '{}';
+
+        // MOCK inference (replace with real fetch to your Flask endpoint)
+        await new Promise(r => setTimeout(r, 600));
+        const scoreRaw =
+          (payload.Tumor_Size_mm || 0) * 0.03 +
+          (payload.Diabetes || 0) * 0.25 +
+          (payload.Mortalitiy_Rate_per_100k || 0) * 0.01 +
+          Math.min((payload.Healthcare_Costs || 0) / 100000, 0.2) +
+          (payload.Treatment_type || 0) * 0.05;
+
+        const prob = Math.max(0, Math.min(1, 1 / (1 + Math.exp(-(scoreRaw - 0.9)))));
+        const result = {
+          label: prob > 0.5 ? "high_risk" : "low_risk",
+          confidence: Number(prob.toFixed(3))
+        };
+
+        setStatus('ok');
+        predLabel.textContent = result.label;
+        predConf.textContent = String(result.confidence);
+        predRaw.textContent = JSON.stringify(result, null, 2);
+      });
+
+      form.addEventListener('reset', () => {
+        preview.textContent = '{}';
+        setStatus('idle');
+        predLabel.textContent = '—';
+        predConf.textContent = '—';
+        predRaw.textContent = '{}';
+      });
+    })();
+  </script>
+</body>
+</html>
