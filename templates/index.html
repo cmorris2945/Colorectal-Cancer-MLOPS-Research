@@ -143,7 +143,8 @@
       <!-- Server-side prediction (Flask/Jinja) -->
       {% if prediction is not none %}
         <h3>Prediction : {{ prediction }}</h3>
-      {% endif %}
+    {% endif %}
+
 
       <!-- Client-side UI (works even if server doesn't set `prediction`) -->
       <div id="pred-status" class="badge idle">Idle</div>
